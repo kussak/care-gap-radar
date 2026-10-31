@@ -1,0 +1,85 @@
+version: 2
+
+models:
+  - name: int_index_dates
+    columns:
+      - name: index_name
+        data_tests:
+          - unique
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [current, test, train]
+      - name: index_date
+        data_tests: [unique, not_null]
+
+  - name: int_population
+    data_tests:
+      - unique:
+          column_name: "patient_id || '|' || index_name"
+    columns:
+      - name: patient_id
+        data_tests: [not_null]
+      - name: index_name
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [current, test, train]
+
+  - name: int_active_conditions
+    data_tests:
+      - unique:
+          column_name: "patient_id || '|' || index_name || '|' || condition_group"
+
+  - name: int_care_gaps
+    data_tests:
+      - unique:
+          column_name: "patient_id || '|' || index_name || '|' || gap_code"
+    columns:
+      - name: gap_code
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [DM_A1C, HTN_BP]
+      - name: evidence
+        data_tests: [not_null]
+
+  - name: int_patient_features
+    data_tests:
+      - unique:
+          column_name: "patient_id || '|' || index_name"
+    columns:
+      - name: patient_id
+        data_tests: [not_null]
+      - name: index_name
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [current, test, train]
+      - name: payer_category
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [medicaid, medicare, private, none_other]
+      - name: age_years
+        data_tests: [not_null]
+
+  - name: int_labels
+    data_tests:
+      - unique:
+          column_name: "patient_id || '|' || index_name"
+    columns:
+      - name: index_name
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [test, train]
+      - name: label_ed_6m
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+                quote: false

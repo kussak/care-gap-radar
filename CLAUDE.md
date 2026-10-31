@@ -107,7 +107,7 @@ The grain is patient × index date. **Every feature uses only data strictly befo
 A diagnosis is **active** at an index date when `start < index_date AND (stop IS NULL OR stop >= index_date)`. This applies to the chronic condition flags and the care gaps.
 
 - Age at the index date, and sex.
-- Payer category from the most recent encounter: medicaid, medicare, private, or none/other.
+- Payer category from the most recent encounter: `medicaid`, `medicare`, `private`, or `none_other`. Synthea's "Dual Eligible" payer maps to `medicare` (Medicare is primary for dual-eligibles).
 - Counts of ED (`encounterclass = 'emergency'`), inpatient, urgent care, and ambulatory/wellness/outpatient visits.
 - ED visits in the prior 24 months.
 - Total claim cost.

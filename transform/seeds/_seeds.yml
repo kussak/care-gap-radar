@@ -1,0 +1,20 @@
+version: 2
+
+seeds:
+  - name: chronic_condition_codes
+    description: >
+      SNOMED codes per chronic condition group, found by querying condition descriptions in the
+      Synthea data. Prediabetes (714628002), hyperglycemia (80394007) and acute bronchitis
+      (10509002) are deliberately excluded. Diabetes complication codes count as diabetes because
+      ~140 patients carry them without the 44054006 code.
+    config:
+      column_types:
+        snomed_code: varchar
+    columns:
+      - name: snomed_code
+        data_tests: [unique, not_null]
+      - name: condition_group
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [diabetes, hypertension, chf, copd, asthma, ckd, depression, obesity]

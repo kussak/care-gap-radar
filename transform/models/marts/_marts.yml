@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: mart_patient_current
+    description: Features at the current index date plus display fields. Names are UI-only; never send them to the LLM.
+    columns:
+      - name: patient_id
+        data_tests: [unique, not_null]
+      - name: payer_category
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [medicaid, medicare, private, none_other]
+
+  - name: mart_care_gaps_current
+    description: Open care gaps at the current index date.
+    data_tests:
+      - unique:
+          column_name: "patient_id || '|' || gap_code"
+    columns:
+      - name: gap_code
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [DM_A1C, HTN_BP]
+      - name: patient_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('mart_patient_current')
+                field: patient_id
+
+  - name: mart_population_summary
+    description: One-row population summary for the current index date.
