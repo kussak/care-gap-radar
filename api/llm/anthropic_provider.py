@@ -22,6 +22,8 @@ class AnthropicProvider:
     @property
     def client(self) -> anthropic.Anthropic:
         if self._client is None:
+            if not (os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")):
+                raise LLMError("ANTHROPIC_API_KEY is not set (check the variable name in .env).")
             self._client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY
         return self._client
 

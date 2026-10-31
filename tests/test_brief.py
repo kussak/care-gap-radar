@@ -134,6 +134,16 @@ def test_anthropic_model_from_env(monkeypatch):
     assert AnthropicProvider().model == "claude-sonnet-5-5"
 
 
+def test_missing_api_key_returns_clear_502(client, monkeypatch):
+    from api.llm.anthropic_provider import AnthropicProvider
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+    resp = brief_with(client, AnthropicProvider())
+    assert resp.status_code == 502
+    assert "ANTHROPIC_API_KEY is not set" in resp.json()["detail"]
+
+
 def test_anthropic_request_shape_uses_structured_outputs():
     from api.llm.anthropic_provider import AnthropicProvider
 
