@@ -98,7 +98,7 @@ The grain is one row per index date, with the columns `index_name` and `index_da
 
 ### Population (`int_population`)
 
-The grain is patient × index date. A patient is included at an index date if they are alive on that date and had at least one encounter in the prior 24 months. This is a simple stand-in for attribution, worth mentioning in the README.
+The grain is patient × index date. A patient is included at an index date if they are alive on that date, aged 18–99 on that date, and had at least one encounter in the prior 24 months. This is a simple stand-in for attribution to an adult care-management program, worth mentioning in the README. The age bounds drop pediatrics (both care gaps are adult measures; a 1-year-old ranked in the 99th risk percentile) and Synthea's implausibly many centenarians (18 of 1,967 patients, up to age 109, vs about 0.03% in the US).
 
 ### Features (`int_patient_features`)
 

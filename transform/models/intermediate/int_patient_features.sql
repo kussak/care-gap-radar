@@ -2,7 +2,7 @@
 -- 12 months unless the column name says otherwise. The last_*_date columns are audit columns for
 -- the leakage test, not model features.
 with pop as (
-    select pop.*, p.birth_date, p.sex
+    select pop.*, p.sex
     from {{ ref('int_population') }} pop
     join {{ ref('stg_patients') }} p using (patient_id)
 ),
@@ -98,7 +98,7 @@ select
     pop.patient_id,
     pop.index_name,
     pop.index_date,
-    floor(datediff('day', pop.birth_date, pop.index_date) / 365.25)::int as age_years,
+    pop.age_years,
     pop.sex,
     payer.payer_category,
     u.ed_visits_12m,
