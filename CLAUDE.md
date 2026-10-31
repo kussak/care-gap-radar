@@ -127,7 +127,7 @@ Each gap row carries `gap_code`, `gap_description`, `evidence` (a short text suc
 
 ### Labels (`int_labels`)
 
-The grain is patient × index date, for `train_index` and `test_index` only. `label_ed_6m` = 1 if the patient has an ED encounter in the window (index_date, index_date + 6 months].
+The grain is patient × index date, for `train_index` and `test_index` only. `label_ed_6m` = 1 if the patient has an ED encounter in the window (index_date, index_date + 6 months]. Obstetric ED admissions (reason code 72892002 "Normal pregnancy") are excluded: Synthea records labor as an emergency encounter, and with them included 35 of the top 50 risk scores were pregnant patients.
 
 **After building, check the base rate.** If it's below about 3%, tell me and propose broadening the label to ED or inpatient. Don't change it silently.
 

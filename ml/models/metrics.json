@@ -1,0 +1,25 @@
+{
+  "model_version": "gbm-202610310144",
+  "trained_at": "2026-10-31T01:44:44+00:00",
+  "train_index_date": "2025-10-30",
+  "test_index_date": "2026-04-30",
+  "n_train": 1949,
+  "n_test": 1952,
+  "base_rate_train": 0.058,
+  "base_rate_test": 0.0594,
+  "model": {
+    "auroc": 0.5589,
+    "pr_auc": 0.0911,
+    "top_decile_capture": 0.1638
+  },
+  "baseline_prior_ed": {
+    "auroc": 0.5391,
+    "pr_auc": 0.1015,
+    "top_decile_capture": 0.1552
+  },
+  "auroc_delta_ci95": [
+    -0.0404,
+    0.0783
+  ],
+  "beats_baseline": false
+}

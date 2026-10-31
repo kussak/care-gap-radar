@@ -29,6 +29,17 @@ def top_decile_capture(y: np.ndarray, score: np.ndarray) -> float:
     return float(y[top].sum() / y.sum())
 
 
+def auroc_delta_ci(y: np.ndarray, model: np.ndarray, baseline: np.ndarray, n_boot: int = 2000) -> list[float]:
+    """95% paired-bootstrap CI for AUROC(model) - AUROC(baseline) on the same test patients."""
+    rng = np.random.default_rng(42)
+    deltas = []
+    for _ in range(n_boot):
+        i = rng.integers(0, len(y), len(y))
+        if 0 < y[i].sum() < len(i):
+            deltas.append(roc_auc_score(y[i], model[i]) - roc_auc_score(y[i], baseline[i]))
+    return [round(float(np.percentile(deltas, q)), 4) for q in (2.5, 97.5)]
+
+
 def evaluate(y: np.ndarray, score: np.ndarray) -> dict:
     return {
         "auroc": round(roc_auc_score(y, score), 4),
@@ -71,7 +82,9 @@ def main() -> None:
         "model": evaluate(y_test, model_scores),
         "baseline_prior_ed": evaluate(y_test, baseline_scores),
     }
-    metrics["beats_baseline"] = metrics["model"]["auroc"] > metrics["baseline_prior_ed"]["auroc"]
+    # Only claim a win when the whole 95% CI of the AUROC improvement is above zero.
+    metrics["auroc_delta_ci95"] = auroc_delta_ci(y_test, model_scores, baseline_scores)
+    metrics["beats_baseline"] = metrics["auroc_delta_ci95"][0] > 0
 
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump({"model": model, "features": FEATURES, "model_version": model_version}, MODEL_PATH)
@@ -83,8 +96,10 @@ def main() -> None:
     for name, key in [("GBM model", "model"), ("Baseline (prior ED)", "baseline_prior_ed")]:
         m = metrics[key]
         print(f"{name:22}{m['auroc']:>8.3f}{m['pr_auc']:>8.3f}{m['top_decile_capture']:>17.1%}")
-    verdict = "beats" if metrics["beats_baseline"] else "does NOT beat"
-    print(f"\nModel {verdict} the baseline on AUROC. Saved {MODEL_PATH.name} ({model_version}).")
+    lo, hi = metrics["auroc_delta_ci95"]
+    verdict = "beats" if metrics["beats_baseline"] else "does NOT clearly beat"
+    print(f"\nAUROC improvement over baseline: 95% CI [{lo:+.3f}, {hi:+.3f}]")
+    print(f"Model {verdict} the baseline. Saved {MODEL_PATH.name} ({model_version}).")
 
 
 if __name__ == "__main__":
