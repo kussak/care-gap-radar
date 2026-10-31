@@ -104,6 +104,8 @@ The grain is patient × index date. A patient is included at an index date if th
 
 The grain is patient × index date. **Every feature uses only data strictly before `index_date`.** The lookback is 12 months unless noted otherwise.
 
+A diagnosis is **active** at an index date when `start < index_date AND (stop IS NULL OR stop >= index_date)`. This applies to the chronic condition flags and the care gaps.
+
 - Age at the index date, and sex.
 - Payer category from the most recent encounter: medicaid, medicare, private, or none/other.
 - Counts of ED (`encounterclass = 'emergency'`), inpatient, urgent care, and ambulatory/wellness/outpatient visits.
@@ -118,7 +120,7 @@ The grain is patient × index date. **Every feature uses only data strictly befo
 
 The grain is patient × index date × gap. The gap definitions:
 
-- **`DM_A1C`:** The patient has an active diabetes diagnosis (SNOMED 44054006 or other diabetes codes from the seed), and there is no HbA1c observation (LOINC 4548-4) in the 12 months before the index date. Verify these codes exist in the data.
+- **`DM_A1C`:** The patient has an active diabetes diagnosis (SNOMED 44054006 or other diabetes codes from the seed), and there is no HbA1c observation (LOINC 4548-4) in the 12 months before the index date. Prediabetes (SNOMED 714628002) does **not** count as diabetes. Verify these codes exist in the data.
 - **`HTN_BP`:** The patient has active hypertension (SNOMED 59621000), and either the most recent systolic BP (LOINC 8480-6) in the past 12 months is ≥ 140, or there is no systolic BP reading in that window.
 
 Each gap row carries `gap_code`, `gap_description`, `evidence` (a short text such as "last A1c 2025-03-14" or "no A1c on record"), and `last_relevant_date`.
@@ -182,9 +184,9 @@ Select the provider via the `LLM_PROVIDER` environment variable, defaulting to `
 
 ### Minimum necessary data
 
-`build_facts(patient_id)` returns a list of facts like `{id: "F1", text: "Age 58, female, Medicaid"}`. The facts cover age band, sex, payer category, chronic conditions, utilization counts, open care gaps with evidence, and the risk percentile with its top drivers.
+`build_facts(patient_id)` returns a list of facts like `{id: "F1", text: "Age 55–64, female, Medicaid"}`. The facts cover a 10-year age band (never the exact age), sex, payer category, chronic conditions, utilization counts, open care gaps with evidence, and the risk percentile with its top drivers.
 
-**Never include** name, address, SSN, exact birthdate, or internal IDs in the prompt. Add a test that asserts this.
+**Never include** name, address, SSN, exact birthdate, exact age, or internal IDs in the prompt. Add a test that asserts this.
 
 ### Prompt rules (system prompt)
 
@@ -204,8 +206,8 @@ The model plays a care-management assistant at an FQHC. It must use only the pro
 
 ### Validation and caching
 
-- **Grounding check:** Every cited `fact_id` must exist. If validation fails, retry once; if it still fails, return a 502 with a clear error. Log token usage per call.
-- **Caching:** Cache by `(patient_id, facts_hash, model)` in SQLite. The response includes `cached: true/false` and `generated_at`.
+- **Validation:** Every cited `fact_id` must exist (grounding check), and `outreach_message` must be under 80 words. If validation fails, retry once; if it still fails, return a 502 with a clear error. Log token usage per call.
+- **Caching:** Cache by `(patient_id, facts_hash, model, prompt_version)` in SQLite. `prompt_version` is a constant in `brief.py`; bump it whenever the prompt or schema changes. The response includes `cached: true/false` and `generated_at`.
 
 ## Frontend (React, Vite, TypeScript)
 
