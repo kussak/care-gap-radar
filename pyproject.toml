@@ -1,0 +1,33 @@
+[project]
+name = "care-gap-radar"
+version = "0.1.0"
+description = "Population-health worklist for a fictional FQHC: care gaps, ED risk, and LLM care-manager briefs on synthetic data."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "duckdb",
+    "dbt-duckdb",
+    "pandas",
+    "scikit-learn",
+    "shap",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "anthropic",
+    "python-dotenv",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "httpx",
+]
+
+[tool.uv]
+package = false
+# Intel macOS: shap pins numba<0.63 (last x86_64 wheels), and numba 0.62 needs numpy<2.4.
+# Without these, uv picks numpy 2.4 and silently downgrades shap to 0.35 (or numba to 0.53).
+constraint-dependencies = ["shap>=0.51", "numpy<2.4"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

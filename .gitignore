@@ -1,0 +1,29 @@
+# secrets
+.env
+.ant-key
+
+# data (synthetic, but handled like PHI)
+data/
+*.duckdb
+*.duckdb.wal
+*.sqlite
+
+# build artifacts
+target/
+transform/logs/
+transform/dbt_packages/
+ml/models/*.joblib
+synthea/*.jar
+synthea/output/
+
+# python
+.venv/
+__pycache__/
+.pytest_cache/
+
+# node
+node_modules/
+web/dist/
+
+# os
+.DS_Store
