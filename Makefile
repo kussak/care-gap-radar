@@ -2,7 +2,7 @@ SHELL := /bin/bash
 JAVA ?= $(shell /usr/libexec/java_home -v 17)/bin/java
 export JAVA
 
-.PHONY: help setup data dbt train score api web test all java-version
+.PHONY: help setup data dbt train score api web web-check test all java-version
 
 help:  ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -29,8 +29,11 @@ score:  ## Score current patients, write ml.risk_scores (stop the API first)
 api:  ## Run FastAPI on :8000
 	uv run uvicorn api.main:app --reload --port 8000
 
-web:  ## Run Vite dev server on :5173
-	@echo "not implemented yet (phase 6)"
+web:  ## Run Vite dev server on :5173 (proxies /api to :8000)
+	cd web && npm run dev
+
+web-check:  ## Typecheck and build the web app
+	cd web && npm run build
 
 test:  ## Run pytest
 	uv run pytest

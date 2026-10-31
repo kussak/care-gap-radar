@@ -25,6 +25,7 @@ __pycache__/
 # node
 node_modules/
 web/dist/
+web/*.tsbuildinfo
 
 # os
 .DS_Store
