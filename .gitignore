@@ -12,6 +12,7 @@ data/
 target/
 transform/logs/
 transform/dbt_packages/
+transform/.user.yml
 ml/models/*.joblib
 synthea/*.jar
 synthea/output/

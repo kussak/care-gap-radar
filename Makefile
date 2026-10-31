@@ -18,7 +18,7 @@ data:  ## Run Synthea and copy CSVs into data/raw/
 	bash synthea/run.sh
 
 dbt:  ## dbt seed, run, test (stop the API first: DuckDB file lock)
-	@echo "not implemented yet (phase 2)"
+	cd transform && uv run dbt build --profiles-dir .
 
 train:  ## Train and evaluate the ED-risk model
 	@echo "not implemented yet (phase 4)"

@@ -1,0 +1,105 @@
+version: 2
+
+# Synthea CSV export (master-branch-latest, generated with -s 42 -p 2000, Illinois Chicago).
+# Read directly from data/raw/ via dbt-duckdb external_location; every column arrives as VARCHAR
+# and is cast explicitly in staging. Timestamps are ISO-8601 UTC ("2019-03-18T01:56:37Z");
+# condition START/STOP are plain dates. Only the columns listed here are used downstream.
+# Direct identifiers (SSN, drivers, passport, address, lat/lon) are deliberately not selected.
+
+sources:
+  - name: synthea
+    meta:
+      external_location: "read_csv('../data/raw/{name}.csv', header = true, all_varchar = true)"
+    tables:
+      - name: patients
+        description: One row per synthetic patient (living and deceased).
+        columns:
+          - name: Id
+          - name: BIRTHDATE
+          - name: DEATHDATE
+            description: Empty for living patients.
+          - name: FIRST
+            description: Synthea appends digits to names (e.g. "Tennille443"); UI only.
+          - name: LAST
+          - name: GENDER
+            description: "M / F"
+          - name: RACE
+          - name: ETHNICITY
+          - name: CITY
+          - name: STATE
+
+      - name: encounters
+        columns:
+          - name: Id
+          - name: START
+          - name: STOP
+          - name: PATIENT
+          - name: ORGANIZATION
+          - name: PROVIDER
+          - name: PAYER
+            description: Always populated; NO_INSURANCE is a payer row.
+          - name: ENCOUNTERCLASS
+            description: ambulatory, wellness, outpatient, urgentcare, emergency, inpatient, home, virtual, snf, hospice
+          - name: CODE
+            description: SNOMED encounter type
+          - name: DESCRIPTION
+          - name: BASE_ENCOUNTER_COST
+          - name: TOTAL_CLAIM_COST
+          - name: PAYER_COVERAGE
+          - name: REASONCODE
+          - name: REASONDESCRIPTION
+
+      - name: conditions
+        description: No primary key in the source; one row per diagnosis episode.
+        columns:
+          - name: START
+            description: Date (no time).
+          - name: STOP
+            description: Empty while the condition is unresolved.
+          - name: PATIENT
+          - name: ENCOUNTER
+          - name: SYSTEM
+            description: Always SNOMED-CT in this export.
+          - name: CODE
+          - name: DESCRIPTION
+
+      - name: observations
+        description: ~1.6M rows. VALUE is numeric or free text depending on TYPE.
+        columns:
+          - name: DATE
+          - name: PATIENT
+          - name: ENCOUNTER
+          - name: CATEGORY
+          - name: CODE
+            description: LOINC (e.g. 4548-4 HbA1c, 8480-6 systolic BP, 8462-4 diastolic BP)
+          - name: DESCRIPTION
+          - name: VALUE
+          - name: UNITS
+          - name: TYPE
+            description: numeric | text
+
+      - name: medications
+        columns:
+          - name: START
+          - name: STOP
+            description: Empty while the medication is ongoing.
+          - name: PATIENT
+          - name: PAYER
+          - name: ENCOUNTER
+          - name: CODE
+            description: RxNorm
+          - name: DESCRIPTION
+          - name: BASE_COST
+          - name: PAYER_COVERAGE
+          - name: DISPENSES
+          - name: TOTALCOST
+          - name: REASONCODE
+          - name: REASONDESCRIPTION
+
+      - name: payers
+        description: 10 payers incl. Medicare, Medicaid, Dual Eligible, six private plans, NO_INSURANCE.
+        columns:
+          - name: Id
+          - name: NAME
+          - name: OWNERSHIP
+            description: GOVERNMENT | PRIVATE | NO_INSURANCE
