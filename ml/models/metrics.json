@@ -1,6 +1,6 @@
 {
-  "model_version": "gbm-202610312322",
-  "trained_at": "2026-10-31T23:22:35+00:00",
+  "model_version": "gbm-202610312333",
+  "trained_at": "2026-10-31T23:33:13+00:00",
   "train_index_date": "2025-10-30",
   "test_index_date": "2026-04-30",
   "n_train": 1444,

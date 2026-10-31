@@ -2,7 +2,7 @@ SHELL := /bin/bash
 JAVA ?= $(shell /usr/libexec/java_home -v 17)/bin/java
 export JAVA
 
-.PHONY: help setup data dbt train score api web web-check test all java-version
+.PHONY: help setup data dbt train score api web web-check test all clean java-version
 
 help:  ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -14,8 +14,8 @@ setup:  ## Install Python (uv) and web (npm) dependencies
 java-version:  ## Show the Java used for Synthea
 	@"$(JAVA)" -version
 
-data:  ## Run Synthea and copy CSVs into data/raw/
-	bash synthea/run.sh
+data:  ## Run Synthea into data/raw/ (skips if data exists; FORCE=1 regenerates)
+	FORCE=$(FORCE) bash synthea/run.sh
 
 dbt:  ## dbt seed, run, test (stop the API first: DuckDB file lock)
 	cd transform && uv run dbt build --profiles-dir .
@@ -39,3 +39,7 @@ test:  ## Run pytest
 	uv run pytest
 
 all: data dbt train score  ## data -> dbt -> train -> score
+
+clean:  ## Remove derived artifacts (warehouse, model, dbt build); keeps raw CSVs and brief cache
+	rm -f data/warehouse.duckdb data/warehouse.duckdb.wal ml/models/model.joblib
+	rm -rf transform/target transform/logs web/dist
