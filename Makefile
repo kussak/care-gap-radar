@@ -27,7 +27,7 @@ score:  ## Score current patients, write ml.risk_scores (stop the API first)
 	uv run python -m ml.score
 
 api:  ## Run FastAPI on :8000
-	@echo "not implemented yet (phase 5)"
+	uv run uvicorn api.main:app --reload --port 8000
 
 web:  ## Run Vite dev server on :5173
 	@echo "not implemented yet (phase 6)"

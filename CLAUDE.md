@@ -176,7 +176,7 @@ All responses are Pydantic models. Return a 404 for an unknown patient. Enable C
 
 Define a `LLMProvider` protocol with `generate_json(system: str, user: str, schema: dict) -> dict`. It has three implementations:
 
-- `AnthropicProvider`: the real one. The model comes from `ANTHROPIC_MODEL`, defaulting to `claude-haiku-5-5`. Force JSON output through tool use with the schema below. Use `max_tokens` ≈ 800 and a low temperature.
+- `AnthropicProvider`: the real one. The model comes from `ANTHROPIC_MODEL`, defaulting to `claude-haiku-5-5`. Get JSON through **structured outputs** (`output_config.format` with the schema below), which works on every current model. Don't force `tool_choice` (it's a 400 on Opus 5.5 / Sonnet 5.5) and don't send `temperature` (non-default values are a 400 on Haiku 5.5). Use effort `low` and `max_tokens` ≈ 2000, leaving room for adaptive thinking.
 - `OllamaProvider`: a minimal adapter. It doesn't need to be tested live, because it exists to show the swap path for real PHI (self-hosted model) without code changes elsewhere.
 - `FakeProvider`: returns a deterministic brief for tests.
 
