@@ -21,10 +21,10 @@ dbt:  ## dbt seed, run, test (stop the API first: DuckDB file lock)
 	cd transform && uv run dbt build --profiles-dir .
 
 train:  ## Train and evaluate the ED-risk model
-	@echo "not implemented yet (phase 4)"
+	uv run python -m ml.train
 
-score:  ## Score current patients, write ml.risk_scores
-	@echo "not implemented yet (phase 4)"
+score:  ## Score current patients, write ml.risk_scores (stop the API first)
+	uv run python -m ml.score
 
 api:  ## Run FastAPI on :8000
 	@echo "not implemented yet (phase 5)"
