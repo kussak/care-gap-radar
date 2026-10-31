@@ -5,16 +5,30 @@ seeds:
     description: >
       SNOMED codes per chronic condition group, found by querying condition descriptions in the
       Synthea data. Prediabetes (714628002), hyperglycemia (80394007) and acute bronchitis
-      (10509002) are deliberately excluded. Diabetes complication codes count as diabetes because
-      ~140 patients carry them without the 44054006 code.
+      (10509002) are deliberately excluded. Diabetes complication codes have
+      requires_confirmation = true: Synthea attaches them to some hypertensive patients who have
+      no diabetes code, no A1c and no diabetes medication, so they only count as diabetes when
+      backed by an A1c or a diabetes medication before the index date.
     config:
       column_types:
         snomed_code: varchar
+        requires_confirmation: boolean
     columns:
       - name: snomed_code
         data_tests: [unique, not_null]
+      - name: requires_confirmation
+        data_tests: [not_null]
       - name: condition_group
         data_tests:
           - accepted_values:
               arguments:
                 values: [diabetes, hypertension, chf, copd, asthma, ckd, depression, obesity]
+
+  - name: diabetes_medication_codes
+    description: RxNorm codes for glucose-lowering medications present in the Synthea data.
+    config:
+      column_types:
+        rxnorm_code: varchar
+    columns:
+      - name: rxnorm_code
+        data_tests: [unique, not_null]

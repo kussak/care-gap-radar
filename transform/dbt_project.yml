@@ -25,3 +25,4 @@ models:
 seeds:
   care_gap_radar:
     +schema: seeds
+    +full_refresh: true  # tiny lookup tables; always recreate so column changes don't break builds

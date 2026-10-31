@@ -120,7 +120,7 @@ A diagnosis is **active** at an index date when `start < index_date AND (stop IS
 
 The grain is patient × index date × gap. The gap definitions:
 
-- **`DM_A1C`:** The patient has an active diabetes diagnosis (SNOMED 44054006 or other diabetes codes from the seed), and there is no HbA1c observation (LOINC 4548-4) in the 12 months before the index date. Prediabetes (SNOMED 714628002) does **not** count as diabetes. Verify these codes exist in the data.
+- **`DM_A1C`:** The patient has an active diabetes diagnosis (SNOMED 44054006 or other diabetes codes from the seed), and there is no HbA1c observation (LOINC 4548-4) in the 12 months before the index date. Prediabetes (SNOMED 714628002) does **not** count as diabetes. Diabetes *complication* codes (seed column `requires_confirmation = true`) count only when the patient also has an HbA1c or a diabetes medication (`diabetes_medication_codes` seed) before the index date: Synthea attaches them to some hypertensive patients with no other sign of diabetes. Verify these codes exist in the data.
 - **`HTN_BP`:** The patient has active hypertension (SNOMED 59621000), and either the most recent systolic BP (LOINC 8480-6) in the past 12 months is ≥ 140, or there is no systolic BP reading in that window.
 
 Each gap row carries `gap_code`, `gap_description`, `evidence` (a short text such as "last A1c 2025-03-14" or "no A1c on record"), and `last_relevant_date`.

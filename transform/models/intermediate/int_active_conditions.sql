@@ -1,5 +1,24 @@
 -- Patient x index date x condition group, for diagnoses active at the index date:
 -- start < index_date and (stop is null or stop >= index_date).
+-- Codes flagged requires_confirmation (diabetes complications) only count when the patient also
+-- has an HbA1c or a diabetes medication before the index date.
+with confirmed_diabetes as (
+    select distinct pop.patient_id, pop.index_name
+    from {{ ref('int_population') }} pop
+    join {{ ref('stg_observations') }} o
+        on o.patient_id = pop.patient_id
+       and o.loinc_code = '4548-4'
+       and o.observation_date < pop.index_date
+    union
+    select distinct pop.patient_id, pop.index_name
+    from {{ ref('int_population') }} pop
+    join {{ ref('stg_medications') }} m
+        on m.patient_id = pop.patient_id
+       and m.start_date < pop.index_date
+    join {{ ref('diabetes_medication_codes') }} d
+        on d.rxnorm_code = m.rxnorm_code
+)
+
 select
     pop.patient_id,
     pop.index_name,
@@ -14,4 +33,9 @@ join {{ ref('stg_conditions') }} c
    and (c.stop_date is null or c.stop_date >= pop.index_date)
 join {{ ref('chronic_condition_codes') }} s
     on s.snomed_code = c.condition_code
+left join confirmed_diabetes cd
+    on cd.patient_id = pop.patient_id
+   and cd.index_name = pop.index_name
+where not s.requires_confirmation
+   or cd.patient_id is not null
 group by all
