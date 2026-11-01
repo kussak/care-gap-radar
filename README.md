@@ -52,7 +52,7 @@ The whole project runs on a 2019 Intel MacBook Pro with 16 GB of RAM. It needs n
 cp .env.example .env      # then put your key after ANTHROPIC_API_KEY=
 make setup                # install Python and web dependencies
 make all                  # data → dbt → train → score   (about 30 seconds if data exists)
-make test                 # 24 tests, no API calls, no cost
+make test                 # 25 tests, no API calls, no cost
 ```
 
 Then use **two terminals**:
@@ -194,7 +194,7 @@ Each entry covers **what it is**, **why it's here**, and **where to look**.
 |---|---|---|
 | GET | `/api/health` | status, date the data runs to, model version |
 | GET | `/api/summary` | patient and gap counts, payer mix, model metrics vs baseline |
-| GET | `/api/patients?limit=&offset=&gap=&min_risk=&sort=` | the worklist: patients with open gaps first, then highest risk (`sort=risk` for risk only) |
+| GET | `/api/patients?limit=&offset=&gap=&min_risk=&min_days_since_visit=&sort=` | the worklist: patients with open gaps first, then highest risk (`sort=risk` for risk only) |
 | GET | `/api/patients/{id}` | one patient: conditions, utilization, gaps, risk drivers |
 | POST | `/api/patients/{id}/brief?refresh=false` | the AI care brief (cached unless `refresh=true`) |
 
@@ -213,7 +213,7 @@ Each entry covers **what it is**, **why it's here**, and **where to look**.
 - **Where:** `web/src/`.
 
 ### pytest — automated tests
-- **What:** `make test` runs 24 tests in about 5 seconds, with **no network and no paid API calls**.
+- **What:** `make test` runs 25 tests in about 5 seconds, with **no network and no paid API calls**.
 
 ---
 
@@ -356,6 +356,13 @@ The ED-risk model, graded on the `test` snapshot (1,451 patients, 5.8% had an ED
 
 The most common top drivers are claim cost, number of medications, age, and outpatient visits: patients who already use a lot of care. Also, only **2 of the 50 highest-risk patients have an open care gap**. "High risk" and "has a gap" are mostly different lists. That's why the worklist shows patients with open gaps first by default: they have a concrete, actionable reason for a call. A "Highest risk" sort option shows the pure risk ranking.
 
+**Recently seen patients.** "Days since last visit" is one of the model's main drivers: a recent visit often means someone is currently unwell. So 58 of the 148 top-10% risk patients, and 14 of the 48 gap patients, were seen in the past 30 days. There's little point asking them to come in, but they aren't all safe to skip:
+- 7 had their high blood pressure measured at that visit, so the doctor already knows.
+- 5 had a visit that *didn't* close their gap (no A1c test, or no BP reading), a missed chance that still needs a call.
+- Patients just out of hospital benefit from a post-discharge check-in call.
+
+So the worklist shows a **Last visit** column and offers a **"Not seen in" filter** (any / 30+ / 90+ days). The default is "any": recently seen patients are visible but easy to filter out when the goal is getting people in.
+
 ---
 
 ## 7. Design decisions
@@ -373,6 +380,7 @@ The most common top drivers are claim cost, number of medications, age, and outp
 | Cache key includes the facts hash and prompt version | Stale briefs can't be served after the data or prompt changes | Any change means paying for new briefs |
 | Read-only DuckDB per request; SQLite for the cache | No lock fights with dbt; the cache can still write | Two databases instead of one |
 | Filters stored in the URL | Back button and shared links restore the exact view | Slightly more code than component state |
+| "Not seen in" is a filter, not a default exclusion | Recently seen patients may still need a missed test or a post-discharge call; a visible filter is easier to explain than a hidden rule | The care manager has to choose the filter for "come in" outreach |
 | Worklist sorts open gaps first, then risk | A gap gives the care manager a concrete reason to call; risk alone (a modest model) does not | The highest-risk patients without gaps appear after all 48 gap patients; one click switches to "Highest risk" |
 
 ---
@@ -458,6 +466,7 @@ care-gap-radar/
 - **Human in the loop:**
   - Briefs stay drafts for care managers, never sent to patients automatically.
   - Capture care-manager feedback ("useful / wrong / unsafe") to evaluate prompt changes.
+- **Suggested call type:** label each patient by the purpose of the call: "schedule a visit", "post-discharge check-in" or "lab/BP check only". This needs clinically reviewed rules (for example, ED or inpatient discharge in the last 7 days), so it was left out of the demo.
 - **LLM evaluation:** build a small graded test set of briefs, so prompt or model changes are measured, not eyeballed.
 - **Reproducibility:**
   - Pin the Synthea build and its reference date (`-r YYYYMMDD`) so data can be regenerated identically.

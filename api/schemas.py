@@ -74,6 +74,7 @@ class WorklistItem(BaseModel):
     risk_percentile: float | None
     open_gap_codes: list[str]
     ed_visits_12m: int
+    days_since_last_encounter: int
 
 
 class Worklist(BaseModel):

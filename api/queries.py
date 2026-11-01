@@ -30,7 +30,12 @@ ORDER_BY = {
 
 
 def worklist(
-    limit: int, offset: int, gap: str | None, min_risk: float | None, sort: str = "gaps"
+    limit: int,
+    offset: int,
+    gap: str | None,
+    min_risk: float | None,
+    sort: str = "gaps",
+    min_days_since_visit: int | None = None,
 ) -> tuple[int, list[dict]]:
     where, params = ["true"], []
     if gap:
@@ -39,6 +44,9 @@ def worklist(
     if min_risk is not None:
         where.append("r.risk_percentile >= ?")
         params.append(min_risk)
+    if min_days_since_visit is not None:
+        where.append("p.days_since_last_encounter >= ?")
+        params.append(min_days_since_visit)
     base = f"""
         from marts.mart_patient_current p
         left join ml.risk_scores r using (patient_id)
@@ -48,7 +56,8 @@ def worklist(
     rows = fetch_all(
         f"""
         select p.patient_id, p.display_name, p.age_years as age, p.sex, p.payer_category,
-               r.risk_score, r.risk_percentile, p.open_gap_codes, p.ed_visits_12m
+               r.risk_score, r.risk_percentile, p.open_gap_codes, p.ed_visits_12m,
+               p.days_since_last_encounter
         {base}
         order by {ORDER_BY[sort]}
         limit ? offset ?

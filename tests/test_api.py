@@ -41,6 +41,18 @@ def test_worklist_filters_and_pagination(client):
     assert page["total"] == 3 and [p["patient_id"] for p in page["items"]] == ["cccc-3333"]
 
 
+def test_worklist_last_visit_filter(client):
+    def ids(query):
+        return {p["patient_id"] for p in client.get(f"/api/patients?{query}").json()["items"]}
+
+    assert ids("min_days_since_visit=30") == {"bbbb-2222", "cccc-3333"}  # aaaa seen 12 days ago
+    assert ids("min_days_since_visit=90") == {"cccc-3333"}
+    assert ids("min_days_since_visit=90&gap=DM_A1C") == set()
+    item = client.get("/api/patients?limit=1").json()["items"][0]
+    assert item["days_since_last_encounter"] == 12
+    assert client.get("/api/patients?min_days_since_visit=-1").status_code == 422
+
+
 def test_worklist_rejects_unknown_gap(client):
     assert client.get("/api/patients?gap=NOPE").status_code == 422
 

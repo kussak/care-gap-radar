@@ -14,6 +14,13 @@ export const PAYER_LABELS: Record<string, string> = {
 
 export const SEX_LABELS: Record<string, string> = { f: "F", m: "M" };
 
+export function daysAgo(days: number): string {
+  if (days === 0) return "today";
+  if (days < 60) return `${days} day${days === 1 ? "" : "s"} ago`;
+  if (days < 730) return `${Math.round(days / 30.44)} mo ago`;
+  return `${Math.round(days / 365.25)} yr ago`;
+}
+
 export const pct = (x: number, digits = 1) => `${(x * 100).toFixed(digits)}%`;
 
 export function ordinal(p: number): string {

@@ -3,10 +3,11 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { api, type GapCode, type WorklistSort } from "../api";
 import { ErrorBox, GapBadge, Loading, RiskBar } from "../components/common";
 import { SummaryHeader } from "../components/SummaryHeader";
-import { GAP_LABELS, PAYER_LABELS, SEX_LABELS } from "../labels";
+import { GAP_LABELS, PAYER_LABELS, SEX_LABELS, daysAgo } from "../labels";
 
 const PAGE_SIZE = 50;
 const RISK_OPTIONS = [0, 50, 75, 90, 95];
+const NOT_SEEN_OPTIONS = [0, 30, 90];
 
 export function WorklistPage() {
   // filters live in the URL so "back" from a patient restores the same view
@@ -14,13 +15,14 @@ export function WorklistPage() {
   const gap = (params.get("gap") as GapCode | null) ?? undefined;
   const minRisk = Number(params.get("min_risk") ?? 0);
   const page = Number(params.get("page") ?? 0);
+  const notSeenDays = Number(params.get("not_seen") ?? 0);
   const sort: WorklistSort = params.get("sort") === "risk" ? "risk" : "gaps";
   const navigate = useNavigate();
   const { search } = useLocation();
   const open = (id: string) => navigate(`/patients/${id}`, { state: { worklistSearch: search } });
 
   const { data, error, isFetching } = useQuery({
-    queryKey: ["worklist", gap, minRisk, sort, page],
+    queryKey: ["worklist", gap, minRisk, notSeenDays, sort, page],
     queryFn: () =>
       api.worklist({
         limit: PAGE_SIZE,
@@ -28,6 +30,7 @@ export function WorklistPage() {
         gap,
         minRisk: minRisk > 0 ? minRisk : undefined,
         sort,
+        minDaysSinceVisit: notSeenDays > 0 ? notSeenDays : undefined,
       }),
     placeholderData: keepPreviousData,
   });
@@ -75,6 +78,19 @@ export function WorklistPage() {
               ))}
             </select>
           </label>
+          <label title="Hide patients seen recently, e.g. when calling people to come in for a visit">
+            Not seen in
+            <select
+              value={notSeenDays}
+              onChange={(e) => update({ not_seen: e.target.value === "0" ? undefined : e.target.value })}
+            >
+              {NOT_SEEN_OPTIONS.map((d) => (
+                <option key={d} value={d}>
+                  {d === 0 ? "Any" : `${d}+ days`}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             Sort
             <select value={sort} onChange={(e) => update({ sort: e.target.value === "risk" ? "risk" : undefined })}>
@@ -101,6 +117,7 @@ export function WorklistPage() {
                   <th>ED risk (6 mo)</th>
                   <th>Open gaps</th>
                   <th className="num">ED visits 12 mo</th>
+                  <th className="num">Last visit</th>
                 </tr>
               </thead>
               <tbody>
@@ -128,11 +145,12 @@ export function WorklistPage() {
                       )}
                     </td>
                     <td className="num">{p.ed_visits_12m}</td>
+                    <td className="num">{daysAgo(p.days_since_last_encounter)}</td>
                   </tr>
                 ))}
                 {data.items.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="muted empty">
+                    <td colSpan={7} className="muted empty">
                       No patients match these filters.
                     </td>
                   </tr>

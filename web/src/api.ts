@@ -48,6 +48,7 @@ export interface WorklistItem {
   risk_percentile: number | null;
   open_gap_codes: GapCode[];
   ed_visits_12m: number;
+  days_since_last_encounter: number;
 }
 
 export interface Worklist {
@@ -153,14 +154,16 @@ export interface WorklistParams {
   gap?: GapCode;
   minRisk?: number;
   sort: WorklistSort;
+  minDaysSinceVisit?: number;
 }
 
 export const api = {
   summary: () => request<Summary>("/api/summary"),
-  worklist: ({ limit, offset, gap, minRisk, sort }: WorklistParams) => {
+  worklist: ({ limit, offset, gap, minRisk, sort, minDaysSinceVisit }: WorklistParams) => {
     const q = new URLSearchParams({ limit: String(limit), offset: String(offset), sort });
     if (gap) q.set("gap", gap);
     if (minRisk !== undefined) q.set("min_risk", String(minRisk));
+    if (minDaysSinceVisit !== undefined) q.set("min_days_since_visit", String(minDaysSinceVisit));
     return request<Worklist>(`/api/patients?${q}`);
   },
   patient: (id: string) => request<PatientDetail>(`/api/patients/${encodeURIComponent(id)}`),

@@ -71,8 +71,11 @@ def patients(
     sort: Literal["gaps", "risk"] = Query(
         "gaps", description="gaps: open gaps first, then risk; risk: risk only"
     ),
+    min_days_since_visit: int | None = Query(
+        None, ge=0, description="Only patients not seen in at least this many days"
+    ),
 ) -> Worklist:
-    total, rows = queries.worklist(limit, offset, gap, min_risk, sort)
+    total, rows = queries.worklist(limit, offset, gap, min_risk, sort, min_days_since_visit)
     return Worklist(total=total, limit=limit, offset=offset, items=rows)
 
 
