@@ -16,7 +16,7 @@ def test_summary_includes_gaps_payers_and_model_card(client):
     assert body["model"]["beats_baseline"] is False
 
 
-def test_worklist_sorted_by_risk_desc(client):
+def test_worklist_default_sort_puts_open_gaps_first(client):
     body = client.get("/api/patients").json()
     assert body["total"] == 3
     assert [p["patient_id"] for p in body["items"]] == ["aaaa-1111", "cccc-3333", "bbbb-2222"]
@@ -24,6 +24,12 @@ def test_worklist_sorted_by_risk_desc(client):
     assert first["display_name"] == "Testy123 Patient456"
     assert first["open_gap_codes"] == ["DM_A1C", "HTN_BP"]
     assert first["risk_percentile"] == 97.5
+
+
+def test_worklist_sort_by_risk_only(client):
+    body = client.get("/api/patients?sort=risk").json()
+    assert [p["patient_id"] for p in body["items"]] == ["aaaa-1111", "bbbb-2222", "cccc-3333"]
+    assert client.get("/api/patients?sort=nope").status_code == 422
 
 
 def test_worklist_filters_and_pagination(client):

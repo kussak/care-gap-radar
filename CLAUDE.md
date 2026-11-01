@@ -164,7 +164,7 @@ The API runs on port 8000 and uses a **read-only** DuckDB connection, which avoi
 |---|---|---|
 | GET | `/api/health` | `{status, data_as_of, model_version}` |
 | GET | `/api/summary` | population summary, gap counts, model metrics (incl. baseline comparison) |
-| GET | `/api/patients?limit=50&offset=0&gap=&min_risk=` | worklist sorted by risk_score desc: id, display name, age, sex, payer, risk_score, risk_percentile, open gap codes, ED visits 12m |
+| GET | `/api/patients?limit=50&offset=0&gap=&min_risk=&sort=gaps` | worklist, by default patients with open gaps first, then risk_score desc (`sort=risk`: risk_score desc only): id, display name, age, sex, payer, risk_score, risk_percentile, open gap codes, ED visits 12m |
 | GET | `/api/patients/{id}` | detail: demographics, chronic conditions, utilization, open gaps with evidence, risk score + top drivers |
 | POST | `/api/patients/{id}/brief?refresh=false` | care-manager brief (cached unless refresh=true) |
 
@@ -215,7 +215,7 @@ The frontend runs on port 5173 and proxies `/api` to 8000. Use TanStack Query fo
 
 1. **Worklist (`/`)**
    - A header with summary stats (patients, open gaps by type, data-as-of date) and a small model card showing AUROC vs the baseline.
-   - Filters for gap type and minimum risk percentile.
+   - Filters for gap type and minimum risk percentile, and a sort choice (open gaps first, the default, or highest risk).
    - A table showing name, age/sex, payer, a risk bar or percentile, gap badges and ED visits in 12 months. Clicking a row opens the patient detail.
 2. **Patient detail (`/patients/:id`)**
    - Demographics, conditions and utilization.

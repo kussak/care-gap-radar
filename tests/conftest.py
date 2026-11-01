@@ -60,7 +60,8 @@ DRIVERS = [
     {"feature": "payer_category_private", "label": "Private insurance", "value": 0.0,
      "display_value": "no", "shap": -0.1, "direction": "down"},
 ]
-RISK = {"aaaa-1111": (0.31, 97.5), "bbbb-2222": (0.05, 40.0), "cccc-3333": (0.12, 80.0)}
+# bbbb (no gap) outranks cccc (gap) on risk, so the two sort orders differ
+RISK = {"aaaa-1111": (0.31, 97.5), "bbbb-2222": (0.20, 85.0), "cccc-3333": (0.12, 80.0)}
 
 METRICS = {
     "model_version": "gbm-test", "trained_at": "2026-10-31T00:00:00+00:00",

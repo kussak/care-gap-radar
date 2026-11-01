@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { api, type GapCode } from "../api";
+import { api, type GapCode, type WorklistSort } from "../api";
 import { ErrorBox, GapBadge, Loading, RiskBar } from "../components/common";
 import { SummaryHeader } from "../components/SummaryHeader";
 import { GAP_LABELS, PAYER_LABELS, SEX_LABELS } from "../labels";
@@ -14,18 +14,20 @@ export function WorklistPage() {
   const gap = (params.get("gap") as GapCode | null) ?? undefined;
   const minRisk = Number(params.get("min_risk") ?? 0);
   const page = Number(params.get("page") ?? 0);
+  const sort: WorklistSort = params.get("sort") === "risk" ? "risk" : "gaps";
   const navigate = useNavigate();
   const { search } = useLocation();
   const open = (id: string) => navigate(`/patients/${id}`, { state: { worklistSearch: search } });
 
   const { data, error, isFetching } = useQuery({
-    queryKey: ["worklist", gap, minRisk, page],
+    queryKey: ["worklist", gap, minRisk, sort, page],
     queryFn: () =>
       api.worklist({
         limit: PAGE_SIZE,
         offset: page * PAGE_SIZE,
         gap,
         minRisk: minRisk > 0 ? minRisk : undefined,
+        sort,
       }),
     placeholderData: keepPreviousData,
   });
@@ -71,6 +73,13 @@ export function WorklistPage() {
                   {r === 0 ? "Any" : `≥ ${r}th`}
                 </option>
               ))}
+            </select>
+          </label>
+          <label>
+            Sort
+            <select value={sort} onChange={(e) => update({ sort: e.target.value === "risk" ? "risk" : undefined })}>
+              <option value="gaps">Open gaps first</option>
+              <option value="risk">Highest risk</option>
             </select>
           </label>
           <span className="muted toolbar-count">

@@ -1,6 +1,7 @@
 """Care Gap Radar API."""
 
 import logging
+from typing import Literal
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -67,8 +68,11 @@ def patients(
     offset: int = Query(0, ge=0),
     gap: GapCode | None = None,
     min_risk: float | None = Query(None, ge=0, le=100, description="Minimum risk percentile"),
+    sort: Literal["gaps", "risk"] = Query(
+        "gaps", description="gaps: open gaps first, then risk; risk: risk only"
+    ),
 ) -> Worklist:
-    total, rows = queries.worklist(limit, offset, gap, min_risk)
+    total, rows = queries.worklist(limit, offset, gap, min_risk, sort)
     return Worklist(total=total, limit=limit, offset=offset, items=rows)
 
 

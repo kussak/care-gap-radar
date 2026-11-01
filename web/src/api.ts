@@ -145,17 +145,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return resp.json() as Promise<T>;
 }
 
+export type WorklistSort = "gaps" | "risk";
+
 export interface WorklistParams {
   limit: number;
   offset: number;
   gap?: GapCode;
   minRisk?: number;
+  sort: WorklistSort;
 }
 
 export const api = {
   summary: () => request<Summary>("/api/summary"),
-  worklist: ({ limit, offset, gap, minRisk }: WorklistParams) => {
-    const q = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  worklist: ({ limit, offset, gap, minRisk, sort }: WorklistParams) => {
+    const q = new URLSearchParams({ limit: String(limit), offset: String(offset), sort });
     if (gap) q.set("gap", gap);
     if (minRisk !== undefined) q.set("min_risk", String(minRisk));
     return request<Worklist>(`/api/patients?${q}`);

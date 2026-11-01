@@ -52,7 +52,7 @@ The whole project runs on a 2019 Intel MacBook Pro with 16 GB of RAM. It needs n
 cp .env.example .env      # then put your key after ANTHROPIC_API_KEY=
 make setup                # install Python and web dependencies
 make all                  # data → dbt → train → score   (about 30 seconds if data exists)
-make test                 # 23 tests, no API calls, no cost
+make test                 # 24 tests, no API calls, no cost
 ```
 
 Then use **two terminals**:
@@ -194,7 +194,7 @@ Each entry covers **what it is**, **why it's here**, and **where to look**.
 |---|---|---|
 | GET | `/api/health` | status, date the data runs to, model version |
 | GET | `/api/summary` | patient and gap counts, payer mix, model metrics vs baseline |
-| GET | `/api/patients?limit=&offset=&gap=&min_risk=` | the worklist, highest risk first |
+| GET | `/api/patients?limit=&offset=&gap=&min_risk=&sort=` | the worklist: patients with open gaps first, then highest risk (`sort=risk` for risk only) |
 | GET | `/api/patients/{id}` | one patient: conditions, utilization, gaps, risk drivers |
 | POST | `/api/patients/{id}/brief?refresh=false` | the AI care brief (cached unless `refresh=true`) |
 
@@ -212,11 +212,8 @@ Each entry covers **what it is**, **why it's here**, and **where to look**.
 - **Plain CSS** (`web/src/styles.css`), with no component library: a neutral palette and one teal accent.
 - **Where:** `web/src/`.
 
-### Make — one-word commands
-- **What:** `Makefile` defines shortcuts like `make dbt` and `make all`, so nobody has to remember long commands.
-
 ### pytest — automated tests
-- **What:** Python's standard test runner. `make test` runs 23 tests in about 5 seconds, with **no network and no paid API calls**.
+- **What:** `make test` runs 24 tests in about 5 seconds, with **no network and no paid API calls**.
 
 ---
 
@@ -357,7 +354,7 @@ The ED-risk model, graded on the `test` snapshot (1,451 patients, 5.8% had an ED
 
 **Verdict: the model is *not clearly better* than the simple baseline.** The 95% interval for the AUROC improvement is −0.036 to +0.106, which includes zero. The UI's model card says exactly this. On this data, the model does slightly better at the top 10% but worse on PR-AUC. That's a modest, honest result. Synthea's ED visits are largely random events, so there's limited signal to find, and a demo that admits it is more credible than one claiming 0.95.
 
-The most common top drivers are claim cost, number of medications, age, and outpatient visits: patients who already use a lot of care. Also, only **2 of the 50 highest-risk patients have an open care gap**. "High risk" and "has a gap" are mostly different lists, which is why the worklist has a gap filter.
+The most common top drivers are claim cost, number of medications, age, and outpatient visits: patients who already use a lot of care. Also, only **2 of the 50 highest-risk patients have an open care gap**. "High risk" and "has a gap" are mostly different lists. That's why the worklist shows patients with open gaps first by default: they have a concrete, actionable reason for a call. A "Highest risk" sort option shows the pure risk ranking.
 
 ---
 
@@ -376,6 +373,7 @@ The most common top drivers are claim cost, number of medications, age, and outp
 | Cache key includes the facts hash and prompt version | Stale briefs can't be served after the data or prompt changes | Any change means paying for new briefs |
 | Read-only DuckDB per request; SQLite for the cache | No lock fights with dbt; the cache can still write | Two databases instead of one |
 | Filters stored in the URL | Back button and shared links restore the exact view | Slightly more code than component state |
+| Worklist sorts open gaps first, then risk | A gap gives the care manager a concrete reason to call; risk alone (a modest model) does not | The highest-risk patients without gaps appear after all 48 gap patients; one click switches to "Highest risk" |
 
 ---
 

@@ -22,7 +22,16 @@ def population_summary() -> dict | None:
     return fetch_one("select * from marts.mart_population_summary")
 
 
-def worklist(limit: int, offset: int, gap: str | None, min_risk: float | None) -> tuple[int, list[dict]]:
+ORDER_BY = {
+    # patients a care manager can act on (open gaps) first, then by predicted risk
+    "gaps": "len(p.open_gap_codes) > 0 desc, r.risk_score desc nulls last, p.patient_id",
+    "risk": "r.risk_score desc nulls last, p.patient_id",
+}
+
+
+def worklist(
+    limit: int, offset: int, gap: str | None, min_risk: float | None, sort: str = "gaps"
+) -> tuple[int, list[dict]]:
     where, params = ["true"], []
     if gap:
         where.append("list_contains(p.open_gap_codes, ?)")
@@ -41,7 +50,7 @@ def worklist(limit: int, offset: int, gap: str | None, min_risk: float | None) -
         select p.patient_id, p.display_name, p.age_years as age, p.sex, p.payer_category,
                r.risk_score, r.risk_percentile, p.open_gap_codes, p.ed_visits_12m
         {base}
-        order by r.risk_score desc nulls last, p.patient_id
+        order by {ORDER_BY[sort]}
         limit ? offset ?
         """,
         [*params, limit, offset],
