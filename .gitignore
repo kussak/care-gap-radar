@@ -1,6 +1,5 @@
 # secrets
 .env
-.ant-key
 
 # data (synthetic, but handled like PHI)
 data/
