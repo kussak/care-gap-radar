@@ -9,7 +9,7 @@ models:
           - not_null
           - accepted_values:
               arguments:
-                values: [current, test, train]
+                values: [current, test, valid, train_18m, train_24m, train_30m, train_36m]
       - name: index_date
         data_tests: [unique, not_null]
 
@@ -24,7 +24,7 @@ models:
         data_tests:
           - accepted_values:
               arguments:
-                values: [current, test, train]
+                values: [current, test, valid, train_18m, train_24m, train_30m, train_36m]
 
   - name: int_active_conditions
     data_tests:
@@ -56,7 +56,7 @@ models:
         data_tests:
           - accepted_values:
               arguments:
-                values: [current, test, train]
+                values: [current, test, valid, train_18m, train_24m, train_30m, train_36m]
       - name: payer_category
         data_tests:
           - not_null
@@ -75,7 +75,7 @@ models:
         data_tests:
           - accepted_values:
               arguments:
-                values: [test, train]
+                values: [test, valid, train_18m, train_24m, train_30m, train_36m]
       - name: label_ed_6m
         data_tests:
           - not_null

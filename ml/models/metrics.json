@@ -1,25 +1,45 @@
 {
-  "model_version": "gbm-202611020257",
-  "trained_at": "2026-11-02T02:57:52+00:00",
+  "model_version": "gbm-202611020422",
+  "trained_at": "2026-11-02T04:22:48+00:00",
+  "model_type": "gbm",
   "train_index_date": "2025-10-30",
+  "train_index_dates": [
+    "2023-10-30",
+    "2024-04-30",
+    "2024-10-30",
+    "2025-04-30",
+    "2025-10-30"
+  ],
   "test_index_date": "2026-04-30",
-  "n_train": 1444,
+  "n_train": 7149,
   "n_test": 1451,
-  "base_rate_train": 0.0568,
+  "base_rate_train": 0.0622,
   "base_rate_test": 0.0579,
   "model": {
-    "auroc": 0.5858,
-    "pr_auc": 0.0962,
-    "top_decile_capture": 0.2024
+    "auroc": 0.6433,
+    "pr_auc": 0.1904,
+    "top_decile_capture": 0.2619
   },
   "baseline_prior_ed": {
     "auroc": 0.576,
     "pr_auc": 0.1288,
     "top_decile_capture": 0.1905
   },
+  "selection_on_valid": {
+    "gbm": {
+      "auroc": 0.6152,
+      "pr_auc": 0.2091,
+      "top_decile_capture": 0.2805
+    },
+    "logreg": {
+      "auroc": 0.6011,
+      "pr_auc": 0.1784,
+      "top_decile_capture": 0.2561
+    }
+  },
   "auroc_delta_ci95": [
-    -0.0594,
-    0.0801
+    0.0103,
+    0.1272
   ],
-  "beats_baseline": false
+  "beats_baseline": true
 }

@@ -225,16 +225,20 @@ The fix is to take **snapshots** of the data at fixed **index dates**, and to co
 
 ```mermaid
 flowchart LR
-    T["train index<br/>2025-10-30"] -->|"label window: next 6 months"| X["test index<br/>2026-04-30"]
-    X -->|"label window: next 6 months"| C["current index<br/>2026-10-30<br/>(latest data)"]
+    T["4 train snapshots<br/>2023-10-30 … 2025-04-30"] -->|"label windows: next 6 months"| V["valid<br/>2025-10-30"]
+    V -->|"label window"| X["test<br/>2026-04-30"]
+    X -->|"label window"| C["current<br/>2026-10-30<br/>(latest data)"]
     C -->|"the future we predict"| F["?"]
 ```
 
 | Index | Features use data before… | Label (did they visit the ED?) from… | Used for |
 |---|---|---|---|
-| `train` | 2025-10-30 | 2025-10-30 → 2026-04-30 | teaching the model |
-| `test` | 2026-04-30 | 2026-04-30 → 2026-10-30 | grading the model on a period it never saw |
+| `train_36m` … `train_18m` | 2023-10-30, 2024-04-30, 2024-10-30, 2025-04-30 | the 6 months after each | teaching the candidate models |
+| `valid` | 2025-10-30 | 2025-10-30 → 2026-04-30 | choosing between the candidates |
+| `test` | 2026-04-30 | 2026-04-30 → 2026-10-30 | grading the final model **once**, on a period it never saw |
 | `current` | 2026-10-30 | unknown (that's the point) | the live worklist |
+
+Each snapshot is 6 months after the previous one, so the label windows never overlap. The same patient appears in several snapshots, each time with only the history known on that date. That's how a model gets several times more examples to learn from without any new data.
 
 Splitting by **time** (not randomly) mirrors reality: you always train on the past and predict the future. A dbt singular test (`transform/tests/assert_no_feature_leakage.sql`) fails the build if any feature uses data on or after its index date.
 
@@ -272,7 +276,14 @@ One subtlety: Synthea sometimes attaches diabetes *complication* codes (for exam
 
 **The label** is `1` if the patient had an ED visit in the 6 months after the index date, else `0`. Childbirth admissions are excluded (see [section 8](#8-surprises-found-in-the-data)). Only about **5.8%** of patients have a `1`, which makes this a *rare-event* problem.
 
-**Training** (`make train`): gradient boosting is fitted on `train` rows and graded on `test` rows.
+**Training** (`make train`) happens in two steps:
+
+1. **Choose:** two candidate models are fitted on the four `train_*` snapshots and compared on `valid`. The candidates are gradient boosting and logistic regression (a simpler model that gives each feature one weight). The best AUROC wins. This time it was gradient boosting (0.615 vs 0.601).
+2. **Grade:** the winner is refitted on all five snapshots before `test`, then scored on `test` exactly once.
+
+Why choose on `valid` and not on `test`? Try enough models and one will look great on the test set by luck. If the test set picks the model, it's no longer an honest grade. Here the effect was visible: logistic regression scored 0.704 on `test` in an early experiment, but validation didn't prefer it, and that number was most likely luck.
+
+**Overfitting, and why more snapshots helped.** The first version trained on a single snapshot with only 82 ED patients. It scored 0.951 AUROC on its own training data but 0.586 on `test`: it had *memorized* those 82 people instead of learning general patterns. Four more snapshots give it 445 positive examples, and the gap shrank (0.784 on training data, 0.643 on `test`). A model's score on its own training data is never evidence of quality; only data it hasn't seen counts.
 
 **Judging it fairly:** a model is only useful if it beats something simple. The **baseline** ranks patients by how many ED visits they had last year, which is what a care manager might do with a spreadsheet. Both are scored with:
 
@@ -348,14 +359,16 @@ The ED-risk model, graded on the `test` snapshot (1,451 patients, 5.8% had an ED
 
 | | AUROC | PR-AUC | Top-10% capture |
 |---|---|---|---|
-| Gradient boosting | **0.586** | 0.096 | **20.2%** |
-| Baseline: prior-year ED visits | 0.576 | **0.129** | 19.1% |
+| Gradient boosting | **0.643** | **0.190** | **26.2%** |
+| Baseline: prior-year ED visits | 0.576 | 0.129 | 19.1% |
 
-**Verdict: the model is *not clearly better* than the simple baseline.** The 95% interval for the AUROC improvement is −0.059 to +0.080, which includes zero. The UI's model card says exactly this. On this data, the model does slightly better at the top 10% but worse on PR-AUC. That's a modest, honest result. Synthea's ED visits are largely random events, so there's limited signal to find, and a demo that admits it is more credible than one claiming 0.95.
+**Verdict: the model is better than the simple baseline, but still modest.** The 95% interval for the AUROC improvement is +0.010 to +0.127, so it's above zero, but only just at the low end. It wins on all three measures. The UI's model card and the facts sent to the AI say so.
 
-The most common top drivers are claim cost, number of medications, age, and outpatient visits: patients who already use a lot of care. Also, only **1 of the 50 highest-risk patients has an open care gap**. "High risk" and "has a gap" are mostly different lists. That's why the worklist shows patients with open gaps first by default: they have a concrete, actionable reason for a call. A "Highest risk" sort option shows the pure risk ranking.
+It wasn't always like this. With a single training snapshot the model was *not clearly better* (0.586 vs 0.576, interval −0.059 to +0.080). The improvement came from more training examples, not a fancier algorithm (see [section 5.5](#55-the-model-training-judging-explaining)). An AUROC of 0.64 is still far from impressive: Synthea's ED visits are largely random events, so there's limited signal to find. Real ED-risk models built on much richer data often score around 0.70–0.80.
 
-**Recently seen patients.** "Days since last visit" is one of the model's main drivers: a recent visit often means someone is currently unwell. So 52 of the 146 top-10% risk patients, and 11 of the 44 gap patients, were seen in the past 30 days. There's little point asking them to come in, but they aren't all safe to skip:
+The most common top drivers are outpatient visits, age, days since the last visit, and claim cost: patients who already use a lot of care. Also, only **2 of the 50 highest-risk patients have an open care gap**. "High risk" and "has a gap" are mostly different lists. That's why the worklist shows patients with open gaps first by default: they have a concrete, actionable reason for a call. A "Highest risk" sort option shows the pure risk ranking.
+
+**Recently seen patients.** "Days since last visit" is one of the model's main drivers: a recent visit often means someone is currently unwell. So 76 of the 146 top-10% risk patients, and 11 of the 44 gap patients, were seen in the past 30 days. There's little point asking them to come in, but they aren't all safe to skip:
 - 7 had their high blood pressure measured at that visit, so the doctor already knows.
 - 4 had a visit that *didn't* close their gap (no BP reading), a missed chance that still needs a call.
 - Patients just out of hospital benefit from a post-discharge check-in call.
@@ -370,6 +383,7 @@ So the worklist shows a **Last visit** column and offers a **"Not seen in" filte
 |---|---|---|
 | DuckDB + dbt instead of pandas scripts | Mirrors a real Snowflake + dbt stack; SQL is reviewable and tested | Needs dbt knowledge; heavier than one script |
 | Index-date snapshots + time-based split | Prevents leakage and mirrors how the model is really used | Fewer training rows than pooling many dates |
+| Several training snapshots, a validation snapshot, test scored once | 4× more training examples cut overfitting; choosing the model on `valid` keeps the test grade honest | The same patient appears in several snapshots, so rows aren't fully independent; the final model is refitted, so it's slightly different from the one validated |
 | Leakage enforced by a dbt test | A future edit that leaks fails the build instead of quietly inflating metrics | Covers only the audited date columns |
 | Report the baseline with a confidence interval | A model has to beat the obvious approach to earn its place | Less impressive-looking numbers |
 | Gradient boosting (scikit-learn) | Good with mixed tabular data; exact SHAP; no extra system libraries | LightGBM/XGBoost are faster but need `libomp` on macOS |
@@ -489,10 +503,12 @@ care-gap-radar/
 | **Label** | What the model is trained to predict (ED visit within 6 months: yes/no). |
 | **LLM** | Large language model, such as Claude. |
 | **Mart** | A final, app-ready table in the warehouse. |
+| **Overfitting** | A model memorizing its training examples instead of learning patterns that carry over. Sign: a much better score on training data than on unseen data. |
 | **Percentile** | 99th percentile = higher predicted risk than 99% of patients. |
 | **PR-AUC** | How well the top of a ranked list is filled with true positives; key for rare outcomes. |
 | **Prompt version** | A label bumped whenever the AI instructions change, so old cached briefs aren't reused. |
 | **Proxy** (Vite) | The dev server forwarding `/api` requests from the browser to the backend. |
 | **SHAP value** | How much one feature pushed one patient's prediction up or down. |
 | **Structured outputs** | An API feature that guarantees the model's reply matches a given JSON Schema. |
+| **Validation set** | Data held back for *choosing* between models, so the test set stays untouched for the final grade. |
 | **Token** | The unit LLMs read and bill by, roughly ¾ of a word. |

@@ -91,8 +91,11 @@ Staging models do only light cleanup: rename columns to snake_case, cast dates a
 These are the backbone of leak-free ML:
 
 - `current_date_` is the date of the latest encounter in the data.
-- `test_index` is `current_date_` minus 6 months.
-- `train_index` is `current_date_` minus 12 months.
+- `test` is `current_date_` minus 6 months. It is scored once, for the reported metrics.
+- `valid` is `current_date_` minus 12 months. It chooses the model type.
+- `train_18m`, `train_24m`, `train_30m`, `train_36m` are `current_date_` minus 18, 24, 30 and 36 months. They fit the candidate models.
+
+The snapshots are 6 months apart, so their 6-month label windows never overlap. With a single training snapshot (82 positives) the model memorized its training data (train AUROC 0.951 vs test 0.586); four snapshots give about 4× the positives.
 
 The grain is one row per index date, with the columns `index_name` and `index_date`.
 
@@ -128,7 +131,7 @@ Each gap row carries `gap_code`, `gap_description`, `evidence` (a short text suc
 
 ### Labels (`int_labels`)
 
-The grain is patient × index date, for `train_index` and `test_index` only. `label_ed_6m` = 1 if the patient has an ED encounter in the window (index_date, index_date + 6 months]. Obstetric ED admissions (reason code 72892002 "Normal pregnancy") are excluded: Synthea records labor as an emergency encounter, and with them included 35 of the top 50 risk scores were pregnant patients.
+The grain is patient × index date, for every snapshot except `current`. `label_ed_6m` = 1 if the patient has an ED encounter in the window (index_date, index_date + 6 months]. Obstetric ED admissions (reason code 72892002 "Normal pregnancy") are excluded: Synthea records labor as an emergency encounter, and with them included 35 of the top 50 risk scores were pregnant patients.
 
 **After building, check the base rate.** If it's below about 3%, tell me and propose broadening the label to ED or inpatient. Don't change it silently.
 
@@ -147,13 +150,17 @@ The grain is patient × index date, for `train_index` and `test_index` only. `la
 ## ML
 
 - **`ml/train.py`:**
-  - Train a `GradientBoostingClassifier` on `train_index` rows and evaluate on `test_index` rows. This is a time-based split; never use a random split across index dates.
+  - Time-based splits only; never use a random split across index dates:
+    1. Fit each candidate on the `train_*` snapshots: a `GradientBoostingClassifier` and a standardized, L2-regularized `LogisticRegression` (C=0.1). Both are fixed in advance.
+    2. Pick the one with the best AUROC on `valid`.
+    3. Refit the winner on `train_*` + `valid` and score `test` **once**. `test` never influences the choice.
+  - Report the validation scores of both candidates alongside the test metrics.
   - Report AUROC, PR-AUC and the base rate.
   - Compare against a simple baseline that ranks patients by prior-12-month ED count, and report both models side by side. If the model doesn't beat the baseline, say so honestly.
   - Save the model and the feature list to `ml/models/model.joblib`, and the metrics to `ml/models/metrics.json`.
 - **`ml/score.py`:**
   - Score `current` rows.
-  - Compute the SHAP values with `TreeExplainer`.
+  - Compute the SHAP values with `TreeExplainer` (a `LinearExplainer` would be needed if logistic regression wins).
   - Write the table `ml.risk_scores (patient_id, risk_score, risk_percentile, top_drivers JSON, model_version, scored_at)`. `top_drivers` holds the top 3 features by |SHAP|, with a human-readable label, the feature value and the direction.
 - Keep feature-name → human-label mapping in one place (`ml/features.py`).
 
