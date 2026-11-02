@@ -110,6 +110,7 @@ A diagnosis is **active** at an index date when `start < index_date AND (stop IS
 - Payer category from the most recent encounter: `medicaid`, `medicare`, `private`, or `none_other`. Synthea's "Dual Eligible" payer maps to `medicare` (Medicare is primary for dual-eligibles).
 - Counts of ED (`encounterclass = 'emergency'`), inpatient, urgent care, and ambulatory/wellness/outpatient visits.
 - ED visits in the prior 24 months.
+- ED counts (12 and 24 months) exclude obstetric ED admissions (reason code 72892002), the same definition of "ED visit" as the label (see Labels): 20% of prior-year ED visits were labor, and 48 patients' only ED history was giving birth.
 - Total claim cost.
 - Days since the last encounter.
 - Chronic condition flags from the `chronic_condition_codes` seed: diabetes, hypertension, CHF, COPD, asthma, CKD, depression and obesity. Find the SNOMED codes by querying the actual condition descriptions in the data, and record them in the seed with descriptions.
@@ -120,7 +121,7 @@ A diagnosis is **active** at an index date when `start < index_date AND (stop IS
 
 The grain is patient × index date × gap. The gap definitions:
 
-- **`DM_A1C`:** The patient has an active diabetes diagnosis (SNOMED 44054006 or other diabetes codes from the seed), and there is no HbA1c observation (LOINC 4548-4) in the 12 months before the index date. Prediabetes (SNOMED 714628002) does **not** count as diabetes. Diabetes *complication* codes (seed column `requires_confirmation = true`) count only when the patient also has an HbA1c or a diabetes medication (`diabetes_medication_codes` seed) before the index date: Synthea attaches them to some hypertensive patients with no other sign of diabetes. Verify these codes exist in the data.
+- **`DM_A1C`:** The patient has an active diabetes diagnosis (SNOMED 44054006 or other diabetes codes from the seed), and there is no HbA1c observation (LOINC 4548-4) in the 12 months before the index date. Prediabetes (SNOMED 714628002) does **not** count as diabetes. Diabetes *complication* codes (seed column `requires_confirmation = true`) count only when the patient also has a diabetes medication (`diabetes_medication_codes` seed) or an HbA1c ≥ 6.5% (the diagnostic threshold) before the index date: Synthea attaches them to some hypertensive patients with no other sign of diabetes. Any A1c is not enough: a normal A1c (5.2–5.5%) is evidence *against* diabetes, and accepting it let 4 false gaps through. Verify these codes exist in the data.
 - **`HTN_BP`:** The patient has active hypertension (SNOMED 59621000), and either the most recent systolic BP (LOINC 8480-6) in the past 12 months is ≥ 140, or there is no systolic BP reading in that window.
 
 Each gap row carries `gap_code`, `gap_description`, `evidence` (a short text such as "last A1c 2025-03-14" or "no A1c on record"), and `last_relevant_date`.

@@ -44,8 +44,6 @@ This was built as a weekend learning project. Most of the tools here were new to
 | Node.js (LTS) | Runs the web frontend | `node --version` |
 | An Anthropic API key | Only for generating real AI briefs; everything else works without it | — |
 
-The whole project runs on a 2019 Intel MacBook Pro with 16 GB of RAM. It needs no GPU and no Docker.
-
 ### Run it
 
 ```bash
@@ -252,6 +250,7 @@ All features use the 12 months before the index date unless noted (`int_patient_
 - **Utilization** (how much care they used):
   - ED, inpatient, urgent-care and outpatient visit counts.
   - ED visits over 24 months.
+  - ED counts leave out childbirth (labor is recorded as an ED visit in Synthea), the same rule as the label, so "ED visit" means one thing everywhere.
   - Total claim cost.
   - Days since the last visit.
 - **Chronic conditions:** yes/no flags for diabetes, hypertension, heart failure, COPD, asthma, kidney disease, depression and obesity. A diagnosis counts as *active* if it started before the index date and hadn't ended by it. The SNOMED codes for each condition are listed in `transform/seeds/chronic_condition_codes.csv`, found by searching the actual data.
@@ -264,10 +263,10 @@ The human-readable label for every feature is defined once, in `ml/features.py`,
 
 | Gap | Rule (as of the index date) | Evidence shown |
 |---|---|---|
-| **`DM_A1C`**: diabetes without an A1c test | Active diabetes **and** no HbA1c result (LOINC 4548-4) in the past 12 months. Prediabetes doesn't count. | "last A1c 2025-03-14" or "no A1c on record" |
+| **`DM_A1C`**: diabetes without an A1c test | Active diabetes **and** no HbA1c result (LOINC 4548-4) in the past 12 months. Prediabetes doesn't count. | "last A1c 2025-08-28 (6.6%)" or "no A1c on record" |
 | **`HTN_BP`**: hypertension not controlled | Active hypertension (SNOMED 59621000) **and** either the latest systolic BP in 12 months is ≥ 140, **or** there's no BP reading at all. | "last BP 152/94 on 2026-04-20" or "no BP in past 12 months (last 2025-06-02)" |
 
-One subtlety: Synthea sometimes attaches diabetes *complication* codes (for example "kidney disorder due to diabetes") to patients with no other sign of diabetes. Those codes count only if the patient also has an A1c result or a diabetes medication. That's the `requires_confirmation` column in the seed.
+One subtlety: Synthea sometimes attaches diabetes *complication* codes (for example "kidney disorder due to diabetes") to patients with no other sign of diabetes. Those codes count only if the patient also takes a diabetes medication or has an A1c of 6.5% or higher (the level at which diabetes is diagnosed). That's the `requires_confirmation` column in the seed. A normal A1c doesn't count: it's evidence *against* diabetes (see Surprises below).
 
 ### 5.5 The model: training, judging, explaining
 
@@ -341,24 +340,24 @@ Population at the current date (2026-10-30): **1,464 adults**.
 | | Count |
 |---|---|
 | Payer mix | Private 708 · Medicare 391 · Medicaid 261 · Uninsured/other 104 |
-| Open `DM_A1C` gaps | 7 |
+| Open `DM_A1C` gaps | 3 |
 | Open `HTN_BP` gaps | 42 (36 uncontrolled, 6 with no BP measured) |
-| Patients with any open gap | 48 |
+| Patients with any open gap | 44 |
 
 The ED-risk model, graded on the `test` snapshot (1,451 patients, 5.8% had an ED visit):
 
 | | AUROC | PR-AUC | Top-10% capture |
 |---|---|---|---|
-| Gradient boosting | **0.589** | 0.099 | **23.8%** |
-| Baseline: prior-year ED visits | 0.555 | **0.121** | 17.9% |
+| Gradient boosting | **0.586** | 0.096 | **20.2%** |
+| Baseline: prior-year ED visits | 0.576 | **0.129** | 19.1% |
 
-**Verdict: the model is *not clearly better* than the simple baseline.** The 95% interval for the AUROC improvement is −0.036 to +0.106, which includes zero. The UI's model card says exactly this. On this data, the model does slightly better at the top 10% but worse on PR-AUC. That's a modest, honest result. Synthea's ED visits are largely random events, so there's limited signal to find, and a demo that admits it is more credible than one claiming 0.95.
+**Verdict: the model is *not clearly better* than the simple baseline.** The 95% interval for the AUROC improvement is −0.059 to +0.080, which includes zero. The UI's model card says exactly this. On this data, the model does slightly better at the top 10% but worse on PR-AUC. That's a modest, honest result. Synthea's ED visits are largely random events, so there's limited signal to find, and a demo that admits it is more credible than one claiming 0.95.
 
-The most common top drivers are claim cost, number of medications, age, and outpatient visits: patients who already use a lot of care. Also, only **2 of the 50 highest-risk patients have an open care gap**. "High risk" and "has a gap" are mostly different lists. That's why the worklist shows patients with open gaps first by default: they have a concrete, actionable reason for a call. A "Highest risk" sort option shows the pure risk ranking.
+The most common top drivers are claim cost, number of medications, age, and outpatient visits: patients who already use a lot of care. Also, only **1 of the 50 highest-risk patients has an open care gap**. "High risk" and "has a gap" are mostly different lists. That's why the worklist shows patients with open gaps first by default: they have a concrete, actionable reason for a call. A "Highest risk" sort option shows the pure risk ranking.
 
-**Recently seen patients.** "Days since last visit" is one of the model's main drivers: a recent visit often means someone is currently unwell. So 58 of the 148 top-10% risk patients, and 14 of the 48 gap patients, were seen in the past 30 days. There's little point asking them to come in, but they aren't all safe to skip:
+**Recently seen patients.** "Days since last visit" is one of the model's main drivers: a recent visit often means someone is currently unwell. So 52 of the 146 top-10% risk patients, and 11 of the 44 gap patients, were seen in the past 30 days. There's little point asking them to come in, but they aren't all safe to skip:
 - 7 had their high blood pressure measured at that visit, so the doctor already knows.
-- 5 had a visit that *didn't* close their gap (no A1c test, or no BP reading), a missed chance that still needs a call.
+- 4 had a visit that *didn't* close their gap (no BP reading), a missed chance that still needs a call.
 - Patients just out of hospital benefit from a post-discharge check-in call.
 
 So the worklist shows a **Last visit** column and offers a **"Not seen in" filter** (any / 30+ / 90+ days). The default is "any": recently seen patients are visible but easy to filter out when the goal is getting people in.
@@ -381,7 +380,7 @@ So the worklist shows a **Last visit** column and offers a **"Not seen in" filte
 | Read-only DuckDB per request; SQLite for the cache | No lock fights with dbt; the cache can still write | Two databases instead of one |
 | Filters stored in the URL | Back button and shared links restore the exact view | Slightly more code than component state |
 | "Not seen in" is a filter, not a default exclusion | Recently seen patients may still need a missed test or a post-discharge call; a visible filter is easier to explain than a hidden rule | The care manager has to choose the filter for "come in" outreach |
-| Worklist sorts open gaps first, then risk | A gap gives the care manager a concrete reason to call; risk alone (a modest model) does not | The highest-risk patients without gaps appear after all 48 gap patients; one click switches to "Highest risk" |
+| Worklist sorts open gaps first, then risk | A gap gives the care manager a concrete reason to call; risk alone (a modest model) does not | The highest-risk patients without gaps appear after all 44 gap patients; one click switches to "Highest risk" |
 
 ---
 
@@ -390,8 +389,8 @@ So the worklist shows a **Last visit** column and offers a **"Not seen in" filte
 These were the most instructive moments of the project.
 
 1. **Synthea data runs right up to the day it was generated**, and covers whole lifetimes. So "today" in this project is 2026-10-30, the date of the latest visit, not the real calendar date. It also means rerunning Synthea gives different patients (hence `make data` won't overwrite).
-2. **Diabetes complication codes without diabetes.** At first, 29 of 36 "diabetes without A1c" gaps were patients whose *only* diabetes signal was a complication code attached alongside hypertension. Requiring an A1c or diabetes medication as confirmation fixed this (7 real gaps remain).
-3. **Childbirth counted as an emergency.** Synthea records labor as an ED visit. Before we excluded it (reason code 72892002), **35 of the top 50 risk scores were pregnant patients**: technically correct, but useless for a care manager.
+2. **Diabetes complication codes without diabetes.** At first, 29 of 36 "diabetes without A1c" gaps were patients whose *only* diabetes signal was a complication code attached alongside hypertension. Requiring an A1c or diabetes medication as confirmation fixed most of this. An independent review later found the rule was still too loose: *any* A1c counted, so 4 of the remaining 7 gaps were patients whose only "confirmation" was a normal A1c (5.2–5.5%) from years ago. Now only an A1c ≥ 6.5% or a diabetes medication confirms, and 3 real gaps remain.
+3. **Childbirth counted as an emergency.** Synthea records labor as an ED visit. Before we excluded it (reason code 72892002), **35 of the top 50 risk scores were pregnant patients**: technically correct, but useless for a care manager. At first we excluded labor only from the *label*. The review also found that labor was still counted in the *past* ED visit features: 20% of prior-year ED visits, and the only "ED history" for 48 patients. Features and label now use the same definition of an ED visit. That made the baseline noticeably better (AUROC 0.555 → 0.576), while the model stayed about the same.
 4. **Children and centenarians.** The first worklist had a 1-year-old in the 99th percentile and 18 patients aged 100–109 (0.9% of patients, vs about 0.03% in the US). Both care gaps are adult measures, so the population is now limited to ages 18–99. This also slightly improved the model.
 5. **Sparse conditions.** Depression appears for only about a dozen patients, so its flag carries almost no signal.
 

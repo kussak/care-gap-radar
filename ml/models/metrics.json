@@ -1,6 +1,6 @@
 {
-  "model_version": "gbm-202610312333",
-  "trained_at": "2026-10-31T23:33:13+00:00",
+  "model_version": "gbm-202611020257",
+  "trained_at": "2026-11-02T02:57:52+00:00",
   "train_index_date": "2025-10-30",
   "test_index_date": "2026-04-30",
   "n_train": 1444,
@@ -8,18 +8,18 @@
   "base_rate_train": 0.0568,
   "base_rate_test": 0.0579,
   "model": {
-    "auroc": 0.5894,
-    "pr_auc": 0.099,
-    "top_decile_capture": 0.2381
+    "auroc": 0.5858,
+    "pr_auc": 0.0962,
+    "top_decile_capture": 0.2024
   },
   "baseline_prior_ed": {
-    "auroc": 0.5546,
-    "pr_auc": 0.1214,
-    "top_decile_capture": 0.1786
+    "auroc": 0.576,
+    "pr_auc": 0.1288,
+    "top_decile_capture": 0.1905
   },
   "auroc_delta_ci95": [
-    -0.036,
-    0.1062
+    -0.0594,
+    0.0801
   ],
   "beats_baseline": false
 }

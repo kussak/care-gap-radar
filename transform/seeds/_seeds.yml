@@ -8,7 +8,8 @@ seeds:
       (10509002) are deliberately excluded. Diabetes complication codes have
       requires_confirmation = true: Synthea attaches them to some hypertensive patients who have
       no diabetes code, no A1c and no diabetes medication, so they only count as diabetes when
-      backed by an A1c or a diabetes medication before the index date.
+      backed by a diabetes medication or an A1c >= 6.5% before the index date (a normal A1c is
+      evidence against diabetes, so it does not confirm).
     config:
       column_types:
         snomed_code: varchar

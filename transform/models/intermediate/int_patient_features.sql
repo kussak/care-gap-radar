@@ -14,6 +14,8 @@ enc as (
         e.encounter_date,
         e.started_at,
         e.encounter_class,
+        -- ED visits use the label's definition: obstetric admissions (labor) are not ED utilization
+        e.encounter_class = 'emergency' and coalesce(e.reason_code, '') <> '72892002' as is_ed,
         e.total_claim_cost,
         e.payer_id,
         e.encounter_date >= pop.index_date - interval 12 month as in_12m
@@ -28,11 +30,11 @@ utilization as (
     select
         patient_id,
         index_name,
-        count(*) filter (where in_12m and encounter_class = 'emergency')                            as ed_visits_12m,
+        count(*) filter (where in_12m and is_ed)                                                     as ed_visits_12m,
         count(*) filter (where in_12m and encounter_class = 'inpatient')                            as inpatient_visits_12m,
         count(*) filter (where in_12m and encounter_class = 'urgentcare')                           as urgent_care_visits_12m,
         count(*) filter (where in_12m and encounter_class in ('ambulatory', 'wellness', 'outpatient')) as outpatient_visits_12m,
-        count(*) filter (where encounter_class = 'emergency')                                       as ed_visits_24m,
+        count(*) filter (where is_ed)                                                                as ed_visits_24m,
         coalesce(sum(total_claim_cost) filter (where in_12m), 0)                                    as total_claim_cost_12m,
         max(encounter_date)                                                                         as last_encounter_date,
         arg_max(payer_id, started_at)                                                               as last_payer_id
